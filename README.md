@@ -40,14 +40,14 @@ diary.md        明文，仅私聊可读写
 发出去的只有两类：顾问调用时的提问（已做手机号/身份证/卡号/密钥替换），
 以及你自己的消息（和平时聊天一样）。记忆与日记不会离开本机。
 
-## 工具
+## 开发与运维工具
 
 ```text
 tools/migrate.py     从旧三件导入叙事/倾向/经历（默认 dry-run，--apply 才写）
 tools/verify_live.py 只读体检：10 项，不写库
 tools/preview.py     本地预览面板（假数据 + 无头浏览器渲染检查）
-tests/test_core.py   隐私矩阵 / 预算 / 人格 / 存储（77 项）
-tests/test_page_api.py 面板接口 / 设置保存 / 迁移（33 项）
+tests/test_core.py   隐私矩阵 / 预算 / 人格 / 存储（81 项）
+tests/test_page_api.py 面板接口 / 设置保存 / 迁移（36 项）
 tests/test_tools.py  verify_live 的路径解析与 10 项体检（10 项）
 tests/test_form.js   面板取值与展示辅助函数（Node）
 ```
@@ -89,7 +89,7 @@ tests/test_form.js   面板取值与展示辅助函数（Node）
 /助手状态     模式、范围、调用数、今日用量
 ```
 
-## 工具
+## 模型工具
 
 ```text
 private_diary_write(text, target=diary|self)   写日记 / 自我记录（仅私聊）
@@ -109,7 +109,10 @@ self_narrative_append(text, reason)            在自我叙事后面追加一行
 AstrBot/data/plugin_data/astrbot_plugin_self/self.db
 ```
 
-表：`profile` / `episodes` / `catchphrases` / `people` / `memories` / `advisor_log`。
+表：`profile` / `episodes` / `catchphrases` / `people` / `members` / `memories` / `advisor_log`。
+
+两个容易漏的细节：`members` 是 `(user_id, group_id)`，私聊里能不能提群内容靠它；
+`profile.narrative_version` 是叙事写入的乐观锁，反思和 `self_narrative_append` 都靠它防覆盖。
 
 ## 隐私语义
 
@@ -158,13 +161,13 @@ python tools\migrate.py --apply    # 写入 self.db
 不依赖 AstrBot，纯离线，两份测试分开跑：
 
 ```text
-python tests\test_core.py        77 项   隐私 / 预算 / 人格 / 存储 / 跨群
-python tests\test_page_api.py    33 项   面板接口 / 设置保存 / 触发策略 / 迁移 / 私聊可见性
+python tests\test_core.py        81 项   隐私 / 预算 / 人格 / 存储 / 跨群
+python tests\test_page_api.py    36 项   面板接口 / 设置保存 / 触发策略 / 迁移 / 私聊可见性
 python tests\test_tools.py       10 项   verify_live 找库与体检项
 node tests\test_form.js           1 项   面板取值（空值不回填成 0）
 ```
 
-合计 121 项。改完代码先跑这几条，CI 也会跑同一组。
+合计 128 项。改完代码先跑这几条，CI 也会跑同一组。
 
 ## 已知限制
 
@@ -176,7 +179,7 @@ node tests\test_form.js           1 项   面板取值（空值不回填成 0）
 - 未实现向量检索，顾问只看当前问题与人格状态
 - privacy_words 只替换内置的 11 个 high 词；另有 9 个 mention 词不可配置
 - 卸载插件时不会注销 `register_web_api` 注册的路由；禁用后重启前接口仍可访问
-- 面板的「测试连接」是一次真实模型调用，不受每小时预算约束
+- 面板的「测试连接」单独计额度（每小时 20 次，不占聊天配额），失败会退还
 - 迁移默认不导入旧记忆：旧记忆没有群号，导入后既不能转述也查不到
 
 ## 路线
