@@ -1,0 +1,6 @@
+﻿# 统一按内容识别文本，提交进库一律 LF；Windows 工作区由 core.autocrlf 决定。
+# 没有这条时，谁用 autocrlf=false 提交就会把 CRLF 写进库（1.1.1 那 4 个重复提交就是这么来的）。
+* text=auto
+
+# 图片按二进制处理，别让 text=auto 嗅探出错
+*.png binary
