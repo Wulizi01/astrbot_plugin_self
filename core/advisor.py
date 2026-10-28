@@ -14,6 +14,12 @@ DEFAULT_ABOUT_WORDS = ("bot", "机器人", "你", "这货", "人工智障")
 DEFAULT_INSULT_WORDS = ("垃圾", "废物", "骗子", "傻", "蠢", "智障", "没用的东西")
 DEFAULT_ASK_WORDS = ("方案", "分析", "风险", "为什么", "怎么办", "怎么", "如何", "对比")
 
+# 面板「测试连接」是一次真实的模型调用，必须计数，但不能和群聊共用一个桶：
+# 共用的话，管理员调设置时会被自己聊出来的额度挡在外面；完全不限又等于
+# 把面板变成免费的模型代理。所以单开一个桶，按小时算，冷却对它不适用。
+PANEL_KEY = "panel:test"
+PANEL_PER_HOUR = 20
+
 
 def _split(raw: str, fallback: tuple[str, ...]) -> tuple[str, ...]:
     items = [item.strip() for item in str(raw or "").replace("，", ",").split(",")]
@@ -28,7 +34,6 @@ class Budget:
         self._hourly: dict[str, list[float]] = {}
         self._daily: dict[str, list[float]] = {}
         self._last: dict[str, float] = {}
-
     def allow(
         self,
         key: str,
@@ -94,6 +99,16 @@ class Budget:
     def daily_used(self, key: str) -> int:
         now = time.time()
         return len([stamp for stamp in self._daily.get(key, []) if now - stamp < 86400])
+
+
+def panel_allows(budget: Budget, *, per_hour: int = PANEL_PER_HOUR) -> bool:
+    """Reserve one slot for a panel "test connection" call.
+
+    No cooldown: a human is waiting on the answer, and a burst of a few tests
+    while tuning settings is normal. The hourly cap is what keeps the panel from
+    being used as an unmetered model proxy.
+    """
+    return budget.allow(PANEL_KEY, cooldown=0, per_hour=per_hour)
 
 
 def is_hostile(text: str, hit_words: str = "", about: str = "", insults: str = "") -> bool:

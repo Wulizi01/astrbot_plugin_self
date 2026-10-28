@@ -200,7 +200,9 @@ class SelfPageApi:
             body = await request.get_json(silent=True) or {}
             question = str(body.get("question") or "用一个词回答：在线").strip()
             started = time.monotonic()
-            answer, _ = await self.plugin.consult(question, source="page")
+            # 有独立额度的实现优先；老测试替身只提供 consult 时退回旧路径。
+            consult = getattr(self.plugin, "consult_panel", None) or self.plugin.consult
+            answer, _ = await consult(question)
             return self._ok(
                 {
                     "answer": answer,

@@ -28,7 +28,7 @@ from .core import advisor, persona, privacy
 from .core.store import SelfStore
 
 PLUGIN_ID = "astrbot_plugin_self"
-VERSION = "1.1.3"
+VERSION = "1.1.4"
 
 
 @register(PLUGIN_ID, "local", "自我", VERSION)
@@ -311,6 +311,19 @@ class SelfPlugin(Star):
         latency = int((time.monotonic() - started) * 1000)
         row_id = self.store.log_advisor(source, question, text, True, False, latency)
         return text, int(row_id or 0)
+
+    async def consult_panel(self, question: str) -> tuple[str, int]:
+        """面板「测试连接」：走独立额度，不占群聊/私聊的每小时配额。"""
+        if not advisor.panel_allows(self.budget):
+            raise RuntimeError(
+                f"面板测试每小时 {advisor.PANEL_PER_HOUR} 次，已经用完，稍后再试。"
+            )
+        try:
+            return await self.consult(question, source="page")
+        except BaseException:
+            # 调用失败要把额度还回去，否则一次网络抖动就白吃一格。
+            self.budget.refund(advisor.PANEL_KEY)
+            raise
 
     @filter.on_llm_request(priority=30)
     async def route_advisor(self, event: AstrMessageEvent, req: ProviderRequest):

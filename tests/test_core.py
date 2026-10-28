@@ -327,6 +327,30 @@ class BudgetTests(unittest.TestCase):
         budget.refund("s")
         self.assertFalse(budget.allow("s", cooldown=60, per_hour=10))
 
+    def test_panel_bucket_is_separate_from_chat(self):
+        """面板测试不能用掉、也不该被群聊额度挡住。"""
+        budget = advisor.Budget()
+        self.assertTrue(advisor.panel_allows(budget, per_hour=1))
+        self.assertTrue(budget.allow("group:1", cooldown=0, per_hour=1))
+        self.assertFalse(advisor.panel_allows(budget, per_hour=1))
+
+    def test_panel_has_no_cooldown(self):
+        budget = advisor.Budget()
+        self.assertTrue(advisor.panel_allows(budget, per_hour=5))
+        self.assertTrue(advisor.panel_allows(budget, per_hour=5))
+
+    def test_panel_refund_returns_the_slot(self):
+        budget = advisor.Budget()
+        self.assertTrue(advisor.panel_allows(budget, per_hour=1))
+        budget.refund(advisor.PANEL_KEY)
+        self.assertTrue(advisor.panel_allows(budget, per_hour=1))
+
+    def test_panel_default_cap(self):
+        budget = advisor.Budget()
+        for _ in range(advisor.PANEL_PER_HOUR):
+            self.assertTrue(advisor.panel_allows(budget))
+        self.assertFalse(advisor.panel_allows(budget))
+
 
 class HostileTests(unittest.TestCase):
     def test_direct_insult(self):

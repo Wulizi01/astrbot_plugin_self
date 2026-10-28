@@ -437,5 +437,70 @@ class AdvisorSettingsTests(unittest.TestCase):
         self.assertEqual(applied["api_key"], "sk-new")
 
 
+class AdvisorTestEndpointTests(unittest.TestCase):
+    """「测试连接」是真实模型调用，必须有自己的额度，且不能白吃额度。"""
+
+    def run_async(self, coro):
+        return asyncio.run(coro)
+
+    def fake_request(self, body):
+        import types
+
+        module = types.ModuleType("quart")
+
+        class _Request:
+            async def get_json(self, silent=False):
+                return body
+
+        module.request = _Request()
+        sys.modules["quart"] = module
+        self.addCleanup(lambda: sys.modules.pop("quart", None))
+
+    def test_prefers_consult_panel(self):
+        plugin = StubPlugin()
+        api = SelfPageApi(plugin)
+        asked: list[str] = []
+
+        async def consult_panel(question):
+            asked.append(question)
+            return "面板答案", 9
+
+        plugin.consult_panel = consult_panel
+        self.fake_request({"question": "在吗"})
+        payload = self.run_async(api.advisor_test())
+        self.assertTrue(payload["success"])
+        self.assertEqual(payload["data"]["answer"], "面板答案")
+        self.assertEqual(asked, ["在吗"])
+        self.assertEqual(plugin.asked, [], "有独立额度时不应该走旧入口")
+
+    def test_falls_back_to_consult_when_panel_missing(self):
+        plugin = StubPlugin()
+        api = SelfPageApi(plugin)
+
+        async def consult(question, *, source="manual"):
+            plugin.asked.append(question)
+            return "旧答案", 3
+
+        plugin.consult = consult
+        self.fake_request({})
+        payload = self.run_async(api.advisor_test())
+        self.assertTrue(payload["success"])
+        self.assertEqual(payload["data"]["answer"], "旧答案")
+        self.assertEqual(len(plugin.asked), 1)
+
+    def test_budget_error_is_reported_not_raised(self):
+        plugin = StubPlugin()
+        api = SelfPageApi(plugin)
+
+        async def consult_panel(question):
+            raise RuntimeError("面板测试每小时 20 次，已经用完，稍后再试。")
+
+        plugin.consult_panel = consult_panel
+        self.fake_request({})
+        payload = self.run_async(api.advisor_test())
+        self.assertFalse(payload["success"])
+        self.assertIn("20 次", payload["error"])
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

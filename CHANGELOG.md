@@ -1,5 +1,14 @@
 # 修复记录
 
+## v1.1.4 — 面板测试也计数
+
+| 问题 | 修法 | 用例 |
+|---|---|---|
+| 「测试连接」是真实模型调用，却不计预算，等于一个免费的模型代理 | 单开 `panel:test` 额度桶，每小时 20 次，冷却不适用；调用失败退还额度 | `test_panel_bucket_is_separate_from_chat`、`test_panel_has_no_cooldown`、`test_panel_refund_returns_the_slot`、`test_panel_default_cap` |
+| 面板端点没有用例 | 用假的 `quart.request` 覆盖三条路径：优先 `consult_panel`、没有时退回 `consult`、额度用完时返回错误而不是抛异常 | `AdvisorTestEndpointTests`（3 项） |
+| README 两个「工具」标题重名、数据一节漏 `members` 与 `narrative_version` | 改名为「开发与运维工具 / 模型工具」，补两张表与乐观锁说明 | — |
+| CI 只在 ubuntu 上跑 | 加 windows-latest，覆盖 `verify_live` 的路径解析 | `.github/workflows/ci.yml` |
+
 ## v1.1.3 — 人物画像卡
 
 | 改了什么 | 细节 |
