@@ -130,6 +130,16 @@ STOP_PHRASES = frozenset(
     }
 )
 
+# 口癖应当是“说出来的话”，不是链接、ID、文件名、表情或 @。
+# 只收纯汉字 2–4 字：jpg、2333、awsl、hhh、@某人 这类片段出现过不代表是口癖，
+# 收进去只会把每轮的提示词污染成噪音。
+_CJK_ONLY = re.compile(r"^[\u4e00-\u9fff]+$")
+
+
+def _shape_ok(chunk: str) -> bool:
+    return bool(_CJK_ONLY.match(chunk))
+
+
 
 def extract_catchphrases(text: str) -> list[str]:
     chunks = re.split(r"[。！？!?，,；;\n]+", str(text or ""))
@@ -141,6 +151,8 @@ def extract_catchphrases(text: str) -> list[str]:
         if chunk in STOP_PHRASES:
             continue
         if any(word in chunk for word in ("的", "了", "吗", "呢", "吧", "啊")):
+            continue
+        if not _shape_ok(chunk):
             continue
         phrases.append(chunk)
     return phrases

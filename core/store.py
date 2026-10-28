@@ -206,11 +206,18 @@ class SelfStore:
                 "(SELECT phrase FROM catchphrases ORDER BY count DESC LIMIT 40)"
             )
 
-    def top_catchphrases(self, limit: int = 3) -> list[str]:
+    def top_catchphrases(self, limit: int = 3, min_count: int = 1) -> list[str]:
+        """Most frequent phrases; ``min_count`` filters one-off noise.
+
+        The prompt side passes ``min_count=2``: a phrase said twice is a habit,
+        a phrase said once is usually just a sentence fragment. The panel keeps
+        ``min_count=1`` so the admin can still see everything that was learned.
+        """
         with self._conn() as conn:
             rows = conn.execute(
-                "SELECT phrase FROM catchphrases ORDER BY count DESC LIMIT ?",
-                (limit,),
+                "SELECT phrase FROM catchphrases WHERE count >= ? "
+                "ORDER BY count DESC, at DESC LIMIT ?",
+                (max(1, int(min_count)), int(limit)),
             ).fetchall()
         return [row["phrase"] for row in rows]
 

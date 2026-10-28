@@ -1,4 +1,4 @@
-﻿"""One self: persona, privacy-aware memory, and an advisor — merged.
+"""One self: persona, privacy-aware memory, and an advisor — merged.
 
 This plugin replaces three separate plugins that used to share no state:
   - plastic persona  (traits + self narrative)
@@ -28,7 +28,7 @@ from .core import advisor, persona, privacy
 from .core.store import SelfStore
 
 PLUGIN_ID = "astrbot_plugin_self"
-VERSION = "1.1.1"
+VERSION = "1.1.2"
 
 
 @register(PLUGIN_ID, "local", "自我", VERSION)
@@ -151,7 +151,9 @@ class SelfPlugin(Star):
             person=person,
             episodes=self.store.recent_episodes(4),
             catchphrases=self.store.top_catchphrases(
-                int(self._cfg("max_catchphrases", 3) or 3)
+                int(self._cfg("max_catchphrases", 3) or 3),
+                # 只把复现过两次以上的当口癖：说一遍的多半是句子碎片，不是习惯。
+                min_count=2,
             ),
             days=days,
         )

@@ -376,6 +376,21 @@ class PersonaTests(unittest.TestCase):
         )
         self.assertLessEqual(updated["warmth"], 0.95)
 
+    def test_extract_catchphrases_keeps_short_chinese(self):
+        self.assertEqual(persona.extract_catchphrases("离谱。呜呜"), ["离谱", "呜呜"])
+        # 超过 4 字的长句仍按原规则丢弃
+        self.assertEqual(persona.extract_catchphrases("哈哈哈哈哈"), [])
+
+    def test_extract_catchphrases_drops_shape_noise(self):
+        """链接、数字、英文、@、纯符号都不算口癖。"""
+        text = "看这个 https://x.test/a.jpg 笑死jpg。2333。awsl。@某人。hhh。！！。"
+        self.assertEqual(persona.extract_catchphrases(text), [])
+        # 混在正常句子里的碎片也要挡住，但同句里的纯汉字短句仍然收
+        self.assertEqual(persona.extract_catchphrases("好耶。离谱。"), ["好耶", "离谱"])
+
+    def test_extract_catchphrases_skips_particles_and_stop_words(self):
+        self.assertEqual(persona.extract_catchphrases("好的。真的。算了呢。"), [])
+
 
 class StoreTests(unittest.TestCase):
     def test_profile_is_seeded(self):
@@ -425,6 +440,16 @@ class StoreTests(unittest.TestCase):
         store.bump_catchphrase("乙")
         store.bump_catchphrase("乙")
         self.assertEqual(store.top_catchphrases(1), ["乙"])
+
+    def test_top_catchphrases_min_count_keeps_habits_only(self):
+        """说一遍的是碎片，说两遍的才进提示词。"""
+        store = make_store()
+        store.bump_catchphrase("离谱")
+        store.bump_catchphrase("好耶")
+        store.bump_catchphrase("好耶")
+        self.assertEqual(sorted(store.top_catchphrases(9)), ["好耶", "离谱"])
+        self.assertEqual(store.top_catchphrases(9, min_count=2), ["好耶"])
+        self.assertEqual(store.top_catchphrases(9, min_count=0), store.top_catchphrases(9))
 
     def test_advisor_stats(self):
         store = make_store()

@@ -1,5 +1,12 @@
 # 修复记录
 
+## v1.1.2 — 口癖只收真口癖
+
+| 问题 | 修法 | 用例 |
+|---|---|---|
+| 口癖把 `jpg`、`2333`、`awsl`、`@某人`、纯符号都当成短语收进去，每轮提示词里挂着噪音 | 抽取时只收纯汉字 2–4 字（`_shape_ok`），原有虚词表与停用词不变 | `test_extract_catchphrases_drops_shape_noise`、`test_extract_catchphrases_keeps_short_chinese` |
+| 只说过一次的句子碎片也会进提示词 | 提示词侧要求 `min_count=2`（说两遍才算习惯）；面板仍显示全部，方便排查 | `test_top_catchphrases_min_count_keeps_habits_only` |
+
 ## v1.1.1 — 重置的第二条入口
 
 | 问题 | 修法 | 用例 |

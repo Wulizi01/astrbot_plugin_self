@@ -46,7 +46,7 @@ diary.md        明文，仅私聊可读写
 tools/migrate.py     从旧三件导入叙事/倾向/经历（默认 dry-run，--apply 才写）
 tools/verify_live.py 只读体检：10 项，不写库
 tools/preview.py     本地预览面板（假数据 + 无头浏览器渲染检查）
-tests/test_core.py   隐私矩阵 / 预算 / 人格 / 存储（68 项）
+tests/test_core.py   隐私矩阵 / 预算 / 人格 / 存储（72 项）
 tests/test_page_api.py 面板接口 / 设置保存 / 迁移（33 项）
 tests/test_form.js   面板取值与展示辅助函数（Node）
 ```
@@ -156,19 +156,19 @@ python tools\migrate.py --apply    # 写入 self.db
 不依赖 AstrBot，纯离线，两份测试分开跑：
 
 ```text
-python tests\test_core.py        68 项   隐私 / 预算 / 人格 / 存储 / 跨群
+python tests\test_core.py        72 项   隐私 / 预算 / 人格 / 存储 / 跨群
 python tests\test_page_api.py    33 项   面板接口 / 设置保存 / 触发策略 / 迁移 / 私聊可见性
 node tests\test_form.js           1 项   面板取值（空值不回填成 0）
 ```
 
-合计 102 项。改完代码先跑这三条，CI 也会跑同一组。
+合计 106 项。改完代码先跑这三条，CI 也会跑同一组。
 
 ## 已知限制
 
 - 顾问没有持久会话历史（每次独立提问）
 - `observe_reply` 拿到的是**装饰前**文本（还没加 @、引用、分段）
 - `capture` 用 `event_message_type(ALL)`，会把事件标记为 wake；多插件联动待验证
-- 口癖按标点切 2–4 字，仍可能学到碎片（已过滤常见虚词）
+- 口癖只收纯汉字 2–4 字、且要复现两次以上才进提示词；仍可能学到语法通顺但没意义的碎片
 - 记忆按「被 @ 或被唤醒」写入（capture_mode=addressed 时更窄），群里纯闲聊不进库
 - 未实现向量检索，顾问只看当前问题与人格状态
 - privacy_words 只替换内置的 11 个 high 词；另有 9 个 mention 词不可配置
