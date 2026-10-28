@@ -341,6 +341,25 @@ class PrivateScopeTests(unittest.TestCase):
         self.assertFalse(any(row["text"] == "敏感的话" for row in rows))
 
 
+class ResetEntryPointTests(unittest.TestCase):
+    """Both reset paths must bump narrative_version, or a running reflection
+    writes the old narrative back over the reset."""
+
+    def test_command_goes_through_reset_narrative(self):
+        source = (ROOT / "main.py").read_text(encoding="utf-8")
+        self.assertNotIn(
+            'set_profile(narrative=""',
+            source,
+            "main.py must call store.reset_narrative(), not set_profile directly",
+        )
+
+    def test_reset_narrative_bumps_version(self):
+        store = SelfStore(Path(tempfile.mkdtemp()) / "self.db")
+        store.set_profile(narrative="旧叙事", samples=9, narrative_version=2)
+        store.reset_narrative()
+        self.assertEqual(int(store.profile()["narrative_version"]), 3)
+
+
 class AdvisorSettingsTests(unittest.TestCase):
     def setUp(self) -> None:
         self.plugin = StubPlugin()

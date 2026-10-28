@@ -157,11 +157,11 @@ python tools\migrate.py --apply    # 写入 self.db
 
 ```text
 python tests\test_core.py        66 项   隐私 / 预算 / 人格 / 存储 / 跨群
-python tests\test_page_api.py    31 项   面板接口 / 设置保存 / 触发策略 / 迁移 / 私聊可见性
+python tests\test_page_api.py    33 项   面板接口 / 设置保存 / 触发策略 / 迁移 / 私聊可见性
 node tests\test_form.js           1 项   面板取值（空值不回填成 0）
 ```
 
-合计 98 项。改完代码先跑这三条，CI 也会跑同一组。
+合计 100 项。改完代码先跑这三条，CI 也会跑同一组。
 
 ## 已知限制
 
