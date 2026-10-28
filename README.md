@@ -91,9 +91,14 @@ tests/test_form.js   面板取值与展示辅助函数（Node）
 ## 工具
 
 ```text
-private_diary_write(text, target=diary|self)
-private_diary_read(target=diary|self)
+private_diary_write(text, target=diary|self)   写日记 / 自我记录（仅私聊）
+private_diary_read(target=diary|self)          读日记 / 自我记录（仅私聊）
+self_narrative_append(text, reason)            在自我叙事后面追加一行（仅私聊 + 仅管理员）
 ```
+
+`self_narrative_append` 只追加、不覆盖，单条上限 200 字，总长 2000 字；写入后会把
+反思标记推到当前，避免下一轮反思把它冲掉。这是模型唯一能改自己叙事的入口，
+需要管理员私聊；`/人格重置` 会连同版本号一起重置。
 
 写到 `AstrBot/data/private_self/`。
 
@@ -156,7 +161,7 @@ python tests\test_page_api.py    31 项   面板接口 / 设置保存 / 触发�
 node tests\test_form.js           1 项   面板取值（空值不回填成 0）
 ```
 
-合计 98 项。发布前检查见 `发布检查单.md`。
+合计 98 项。改完代码先跑这三条，CI 也会跑同一组。
 
 ## 已知限制
 
@@ -164,8 +169,9 @@ node tests\test_form.js           1 项   面板取值（空值不回填成 0）
 - `observe_reply` 拿到的是**装饰前**文本（还没加 @、引用、分段）
 - `capture` 用 `event_message_type(ALL)`，会把事件标记为 wake；多插件联动待验证
 - 口癖按标点切 2–4 字，仍可能学到碎片（已过滤常见虚词）
-- 记忆只在被叫到（含 bot/鲸鱼等词）时写入
+- 记忆按「被 @ 或被唤醒」写入（capture_mode=addressed 时更窄），群里纯闲聊不进库
 - 未实现向量检索，顾问只看当前问题与人格状态
+- privacy_words 只替换内置的 11 个 high 词；另有 9 个 mention 词不可配置
 - 卸载插件时不会注销 `register_web_api` 注册的路由；禁用后重启前接口仍可访问
 - 面板的「测试连接」是一次真实模型调用，不受每小时预算约束
 - 迁移默认不导入旧记忆：旧记忆没有群号，导入后既不能转述也查不到
