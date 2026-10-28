@@ -1,0 +1,165 @@
+{
+  "enabled": {
+    "description": "启用自我模块（人格 + 记忆 + 边界）",
+    "type": "bool",
+    "default": true
+  },
+  "learning_rate": {
+    "description": "表达倾向的调整速度",
+    "type": "float",
+    "default": 0.03,
+    "hint": "越大变化越快；0.03 大约是每 30 条回复明显移动一次"
+  },
+  "reflection_enabled": {
+    "description": "定期重写自我叙事",
+    "type": "bool",
+    "default": true
+  },
+  "reflection_interval": {
+    "description": "每多少条回复反思一次",
+    "type": "int",
+    "default": 20
+  },
+  "max_catchphrases": {
+    "description": "注入的常用口癖数量",
+    "type": "int",
+    "default": 3
+  },
+  "privacy_words": {
+    "description": "高敏感词表（逗号分隔），命中即标记为 high",
+    "type": "string",
+    "default": "",
+    "hint": "留空使用内置的 11 个 high 词；另有 9 个 mention 词（喜欢/关系/电话等）不可配置，同样不会被转述"
+  },
+  "capture_mode": {
+    "description": "记录范围",
+    "type": "string",
+    "default": "all",
+    "hint": "all=所有消息都记（成员表最全，推荐）；addressed=只记被 @ 或唤醒的，成员表与「共同群」判定会退化；off=不记。三种模式下钩子都会收到事件，is_wake 标记仍然存在"
+  },
+  "max_episodes": {
+    "description": "最多保留多少段经历",
+    "type": "int",
+    "default": 2000,
+    "hint": "超出的旧经历会被裁掉；只影响存储，注入的永远是最近几段"
+  },
+  "diary_admin_only": {
+    "description": "日记仅管理员可读写",
+    "type": "bool",
+    "default": false,
+    "hint": "关闭时，任意私聊用户都能让 bot 读写日记；开启后非管理员私聊也会被拒绝"
+  },
+  "advisor_enabled": {
+    "description": "启用顾问（拿不准或被攻击时先问一次）",
+    "type": "bool",
+    "default": true
+  },
+  "advisor_mode": {
+    "description": "顾问使用的模型来源",
+    "type": "string",
+    "default": "current_provider",
+    "hint": "current_provider=复用当前模型；api=使用下方 OpenAI 兼容接口"
+  },
+  "advisor_provider_id": {
+    "description": "指定顾问使用的 provider（留空=当前模型）",
+    "type": "string",
+    "default": ""
+  },
+  "api_base": {
+    "description": "API 地址（api 模式）",
+    "type": "string",
+    "default": "https://api.deepseek.com/v1"
+  },
+  "api_key": {
+    "description": "API Key（api 模式）",
+    "type": "string",
+    "default": ""
+  },
+  "api_model": {
+    "description": "API 模型名（api 模式）",
+    "type": "string",
+    "default": "deepseek-chat"
+  },
+  "advisor_prompt": {
+    "description": "顾问的系统提示词",
+    "type": "text",
+    "default": "你是一个只给 bot 提供参考的顾问。用户不会直接和你说话。\n先给结论，再给最多三条理由；不确定就说缺什么信息，不编造。\n默认 300 字以内。"
+  },
+  "advisor_temperature": {
+    "description": "顾问的采样温度",
+    "type": "float",
+    "default": 0.6
+  },
+  "advisor_max_tokens": {
+    "description": "顾问单次最大输出 token",
+    "type": "int",
+    "default": 800
+  },
+  "advisor_timeout": {
+    "description": "顾问调用超时（秒）",
+    "type": "int",
+    "default": 60
+  },
+  "advisor_scope": {
+    "description": "顾问生效范围",
+    "type": "string",
+    "default": "both",
+    "hint": "both=私聊和群聊；private=只私聊；group=只群聊"
+  },
+  "advisor_cooldown": {
+    "description": "同一会话两次咨询的最小间隔（秒）",
+    "type": "int",
+    "default": 60
+  },
+  "advisor_per_hour": {
+    "description": "每小时最多咨询次数",
+    "type": "int",
+    "default": 3
+  },
+  "advisor_per_day": {
+    "description": "每天最多咨询次数（0=不限）",
+    "type": "int",
+    "default": 0
+  },
+  "advisor_trigger_words": {
+    "description": "触发顾问的问题词（逗号分隔，留空用内置）",
+    "type": "string",
+    "default": ""
+  },
+  "advisor_trigger_policy": {
+    "description": "什么时候咨询顾问",
+    "type": "string",
+    "default": "keywords",
+    "hint": "keywords=关键词与攻击；explicit=只在用户明确要求或攻击时（旧名 addressed 仍兼容）；hostile_only=只在被攻击时；probabilistic=按概率；always=每条都问；off=从不"
+  },
+  "advisor_trigger_probability": {
+    "description": "probabilistic 策略下的咨询概率",
+    "type": "float",
+    "default": 0.2
+  },
+  "advisor_hit_words": {
+    "description": "判定“在骂 bot”的直接短语（逗号分隔）",
+    "type": "string",
+    "default": ""
+  },
+  "advisor_about_words": {
+    "description": "指向 bot 的称呼（逗号分隔）",
+    "type": "string",
+    "default": ""
+  },
+  "advisor_insult_words": {
+    "description": "贬低词（逗号分隔，与称呼同时出现才算攻击）",
+    "type": "string",
+    "default": ""
+  },
+  "advisor_route_timeout": {
+    "description": "回复前咨询的总超时（秒），超时就自己答",
+    "type": "int",
+    "default": 8
+  },
+  "advisor_max_chars": {
+    "description": "注入给主模型的顾问建议最大字符数",
+    "type": "int",
+    "default": 1200
+  }
+}

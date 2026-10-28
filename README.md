@@ -1,0 +1,148 @@
+# 自我 / astrbot_plugin_self
+
+把三件本来分开的事合并成一个连续自我：
+
+```text
+人格演化     我说话多长、多冷、多近，以及我为什么变成这样
+隐私记忆     谁在什么场合说了什么，能对谁重复、不能对谁重复
+外部顾问     拿不准或被攻击时，先问一次，再用自己的口吻回答
+```
+
+它们共用一份状态（一个 SQLite），因此“对这个人更亲近”“这件事不能转述”“这次我请教过顾问”会互相影响，而不是各存各的。
+
+## 和三个旧插件的关系
+
+| 旧插件 | 现在的位置 |
+|---|---|
+| plastic_persona | `core/persona.py` |
+| private_memory | `core/privacy.py` |
+| assistant_bridge | `core/advisor.py` |
+
+旧插件的数据不会自动迁移；本插件从空库开始，先跑一段时间再决定是否导入。
+
+## 决策顺序
+
+```text
+收到消息
+  ├─ 记录：谁说的、多长、敏感度、能不能转述
+  ▼
+生成回复前
+  ├─ 注入当前自我（叙事 / 倾向 / 与这个人的关系）
+  ├─ 如果用户在打听第三个人 → 按敏感度决定能不能说
+  └─ 如果拿不准或被攻击 → 问顾问，建议过滤后再注入
+  ▼
+生成回复后
+  ├─ 微调表达倾向、学习口癖、记录重要经历
+  └─ 每 N 条反思一次，重写自我叙事
+```
+
+## 配置要点
+
+| 键 | 作用 |
+|---|---|
+| `learning_rate` | 表达倾向变化速度，默认 0.03 |
+| `reflection_interval` | 每多少条回复反思一次 |
+| `privacy_words` | 敏感词表，留空用内置 18 词 |
+| `advisor_mode` | `current_provider` 或 `api` |
+| `advisor_scope` | `both` / `private` / `group` |
+| `advisor_per_hour` / `advisor_per_day` | 预算，防止刷爆 |
+| `advisor_trigger_words` | 触发咨询的问题词，可覆盖内置 |
+
+## 命令
+
+```text
+/人格状态     叙事、倾向、关系、顾问统计
+/人格重置     清空叙事与统计（记忆和关系保留）
+/助手 问题    直接问顾问
+/助手状态     模式、范围、调用数、今日用量
+```
+
+## 工具
+
+```text
+private_diary_write(text, target=diary|self)
+private_diary_read(target=diary|self)
+```
+
+写到 `AstrBot/data/private_self/`。
+
+## 数据
+
+```text
+AstrBot/data/plugin_data/astrbot_plugin_self/self.db
+```
+
+表：`profile` / `episodes` / `catchphrases` / `people` / `memories` / `advisor_log`。
+
+## 隐私语义
+
+```text
+场景等级   private(0) < group(1)
+铁律一     内容不得流向更公开的场景（私聊 → 群聊 一律禁止）
+铁律二     群内容不出本群；group_id 为空视为未知，一律拒绝
+           本人跨群复述也拒绝——"这个人在别的群说过话"本身就是信息
+铁律三     群里的公开低敏内容，可以在私聊里被提及
+敏感度     high / mention / medium / low
+可转述     只有 low；同群内允许，或从群到私聊允许
+日记       仅私聊可读写；diary_admin_only=true 时仅管理员私聊
+对外脱敏   发给顾问前先替换手机号、身份证、卡号、密钥
+```
+
+## 面板
+
+插件拓展页里叫「自我」，包含：
+
+```text
+状态卡      存在天数、样本、经历、记忆、认识人数、顾问调用
+自我叙事    当前叙事 + 重置按钮
+倾向        话多 / 温度 / 表情 / 主动 四条进度条
+成员表      昵称、发言数、亲近度、最后活跃
+顾问        模式、失败数、平均延迟；一行测试问题 + 最近 20 条记录
+```
+
+面板只读为主，写操作有两个：「重置叙事」和「顾问设置 → 保存并生效」。
+两者都有二次确认或明确的状态提示，且不会读回 API Key。
+
+## 迁移旧数据
+
+```text
+python tools\migrate.py            # 预览，不写入
+python tools\migrate.py --apply    # 写入 self.db
+```
+
+从 `astrbot_plugin_plastic_persona/profiles.json` 读叙事、倾向、经历，
+从 `astrbot_plugin_private_memory/private_memory.db` 读历史记忆。
+
+导入的群记忆 `group_id` 留空，按“未知来源”处理——不会被转述，这是刻意保守。
+
+## 测试
+
+不依赖 AstrBot，纯离线，两份测试分开跑：
+
+```text
+python tests\test_core.py        66 项   隐私 / 预算 / 人格 / 存储 / 跨群
+python tests\test_page_api.py    31 项   面板接口 / 设置保存 / 触发策略 / 迁移 / 私聊可见性
+node tests\test_form.js           1 项   面板取值（空值不回填成 0）
+```
+
+合计 98 项。发布前检查见 `发布检查单.md`。
+
+## 已知限制
+
+- 顾问没有持久会话历史（每次独立提问）
+- `observe_reply` 拿到的是**装饰前**文本（还没加 @、引用、分段）
+- `capture` 用 `event_message_type(ALL)`，会把事件标记为 wake；多插件联动待验证
+- 口癖按标点切 2–4 字，仍可能学到碎片（已过滤常见虚词）
+- 记忆只在被叫到（含 bot/鲸鱼等词）时写入
+- 未实现向量检索，顾问只看当前问题与人格状态
+- 卸载插件时不会注销 `register_web_api` 注册的路由；禁用后重启前接口仍可访问
+- 面板的「测试连接」是一次真实模型调用，不受每小时预算约束
+- 迁移默认不导入旧记忆：旧记忆没有群号，导入后既不能转述也查不到
+
+## 路线
+
+```text
+0.3  顾问可调：面板 18 项设置 + 六种触发策略        ✅ 已完成
+1.0  收尾：并发标记、capture_mode、发布检查单        ✅ 已完成
+1.1  关系维度可视化；路由注销、顾问采纳率统计
+```

@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>自我 · Self</title>
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <main class="app">
+    <header class="hero">
+      <div class="hero-text">
+        <p class="kicker">SELF / 自我</p>
+        <h1>一个连续存在的自己</h1>
+        <p class="sub">人格在变，边界在守，拿不准时会去问顾问。</p>
+      </div>
+      <div class="hero-status">
+        <span id="statusDot" class="dot"></span>
+        <span id="connText">连接中…</span>
+      </div>
+    </header>
+
+    <section class="grid" id="stats" aria-busy="true">
+      <article class="card stat"><span class="label">存在</span><strong id="statDays">–</strong><small>天</small></article>
+      <article class="card stat"><span class="label">样本</span><strong id="statSamples">–</strong><small>条回复</small></article>
+      <article class="card stat"><span class="label">经历</span><strong id="statEpisodes">–</strong><small>条</small></article>
+      <article class="card stat"><span class="label">记忆</span><strong id="statMemories">–</strong><small>条</small></article>
+      <article class="card stat"><span class="label">认识</span><strong id="statPeople">–</strong><small>人</small></article>
+      <article class="card stat"><span class="label">顾问</span><strong id="statAdvisor">–</strong><small>次调用</small></article>
+    </section>
+
+    <section class="card">
+      <div class="card-head">
+        <h2>自我叙事</h2>
+        <div class="row">
+          <button id="narrativeToggle" class="btn ghost" hidden>展开</button>
+          <button id="resetBtn" class="btn ghost">重置叙事</button>
+        </div>
+      </div>
+      <div id="narrativeWrap" class="narrative-wrap">
+        <p id="narrative" class="narrative">（暂无）</p>
+      </div>
+      <div class="traits" id="traits"></div>
+    </section>
+
+    <section class="card">
+      <div class="card-head">
+        <h2>认识的人</h2>
+        <div class="chips" id="peopleSort" role="group" aria-label="排序">
+          <button class="chip" data-sort="msg_count" aria-pressed="true">句数</button>
+          <button class="chip" data-sort="affinity" aria-pressed="false">亲近</button>
+          <button class="chip" data-sort="last_seen" aria-pressed="false">最近</button>
+        </div>
+      </div>
+      <div class="table" id="peopleTable"></div>
+      <p class="hint" id="peopleHint"></p>
+    </section>
+
+    <section class="card">
+      <div class="card-head">
+        <h2>顾问设置</h2>
+        <div class="row">
+          <span id="dirtyBadge" class="badge warn" hidden>未保存</span>
+          <button id="saveAdvisorBtn" class="btn" form="advisorForm" type="submit">保存并生效</button>
+        </div>
+      </div>
+      <form id="advisorForm" class="form-grid" novalidate></form>
+      <p id="advisorSaveResult" class="hint"></p>
+    </section>
+
+    <section class="card">
+      <div class="card-head">
+        <h2>顾问</h2>
+        <div class="row">
+          <input id="testInput" class="input" placeholder="测试问题，可留空" aria-label="测试问题" />
+          <button id="testBtn" class="btn">测试连接</button>
+          <button id="refreshBtn" class="btn ghost">刷新</button>
+        </div>
+      </div>
+      <p id="advisorMeta" class="hint"></p>
+      <p id="testResult" class="result" role="status"></p>
+      <div class="chips" id="logFilter" role="group" aria-label="筛选">
+        <button class="chip" data-filter="all" aria-pressed="true">全部</button>
+        <button class="chip" data-filter="fail" aria-pressed="false">失败</button>
+        <button class="chip" data-filter="route" aria-pressed="false">route</button>
+      </div>
+      <div class="log" id="advisorLog"></div>
+    </section>
+
+    <p id="toast" class="toast" role="status" aria-live="polite"></p>
+  </main>
+  <script src="./page_bridge.js"></script>
+  <script src="./form.js"></script>
+  <script src="./app.js"></script>
+</body>
+</html>
