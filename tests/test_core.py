@@ -8,9 +8,11 @@ throwaway SQLite file. Run with:
 
 from __future__ import annotations
 
+import sqlite3
 import sys
 import tempfile
 import threading
+import time
 import unittest
 from pathlib import Path
 
@@ -551,6 +553,62 @@ class StoreTests(unittest.TestCase):
         for thread in threads:
             thread.join()
         self.assertEqual(errors, [], f"concurrent writes failed: {errors[:1]}")
+
+    def test_concurrent_mark_injected_marks_its_own_row(self):
+        """每条调用只能标记它自己那行。
+
+        旧实现标的是 MAX(id)，并发时后完成的那条会把别人的行标成 injected，
+        自己那行反倒留着 0。这里让 6 条调用同时插库、再按相反顺序标记，
+        如果还按 MAX(id) 走，最后只会有一行是 1，用例就会红。
+        """
+        store = make_store()
+        workers = 6
+        ready = threading.Barrier(workers)
+        ids: dict[int, int] = {}
+        errors: list[Exception] = []
+
+        def worker(index: int) -> None:
+            try:
+                row_id = store.log_advisor("route", f"q{index}", "a", True, False, 1)
+                ids[index] = row_id
+                ready.wait(timeout=10)  # 等所有行都写进库，再去标记
+                time.sleep(0.002 * (workers - index))  # 反序完成，逼出串行假设
+                store.mark_injected(row_id)
+            except Exception as exc:  # noqa: BLE001
+                errors.append(exc)
+
+        threads = [threading.Thread(target=worker, args=(i,)) for i in range(workers)]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join()
+
+        self.assertEqual(errors, [], f"concurrent mark failed: {errors[:1]}")
+        self.assertEqual(len(set(ids.values())), workers, "row ids must be distinct")
+
+        with sqlite3.connect(store.path) as conn:
+            rows = {
+                int(row[0]): (str(row[1]), int(row[2]))
+                for row in conn.execute("SELECT id, question, injected FROM advisor_log")
+            }
+        for index, row_id in ids.items():
+            question, injected = rows[row_id]
+            self.assertEqual(question, f"q{index}", f"row {row_id} 串到别的调用上了")
+            self.assertEqual(injected, 1, f"row {row_id} 没有标成 injected")
+
+    def test_mark_injected_ignores_zero_and_keeps_others_untouched(self):
+        store = make_store()
+        first = store.log_advisor("route", "q1", "a", True, False, 1)
+        second = store.log_advisor("page", "q2", "a", True, False, 1)
+        store.mark_injected(0)
+        store.mark_injected(first)
+        with sqlite3.connect(store.path) as conn:
+            rows = {
+                int(row[0]): int(row[1])
+                for row in conn.execute("SELECT id, injected FROM advisor_log")
+            }
+        self.assertEqual(rows[first], 1)
+        self.assertEqual(rows[second], 0)
 
 
 if __name__ == "__main__":

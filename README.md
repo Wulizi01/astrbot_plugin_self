@@ -46,8 +46,8 @@ diary.md        明文，仅私聊可读写
 tools/migrate.py     从旧三件导入叙事/倾向/经历（默认 dry-run，--apply 才写）
 tools/verify_live.py 只读体检：10 项，不写库
 tools/preview.py     本地预览面板（假数据 + 无头浏览器渲染检查）
-tests/test_core.py   隐私矩阵 / 预算 / 人格 / 存储（66 项）
-tests/test_page_api.py 面板接口 / 设置保存 / 迁移（31 项）
+tests/test_core.py   隐私矩阵 / 预算 / 人格 / 存储（68 项）
+tests/test_page_api.py 面板接口 / 设置保存 / 迁移（33 项）
 tests/test_form.js   面板取值与展示辅助函数（Node）
 ```
 
@@ -156,12 +156,12 @@ python tools\migrate.py --apply    # 写入 self.db
 不依赖 AstrBot，纯离线，两份测试分开跑：
 
 ```text
-python tests\test_core.py        66 项   隐私 / 预算 / 人格 / 存储 / 跨群
+python tests\test_core.py        68 项   隐私 / 预算 / 人格 / 存储 / 跨群
 python tests\test_page_api.py    33 项   面板接口 / 设置保存 / 触发策略 / 迁移 / 私聊可见性
 node tests\test_form.js           1 项   面板取值（空值不回填成 0）
 ```
 
-合计 100 项。改完代码先跑这三条，CI 也会跑同一组。
+合计 102 项。改完代码先跑这三条，CI 也会跑同一组。
 
 ## 已知限制
 
