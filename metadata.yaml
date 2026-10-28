@@ -1,7 +1,7 @@
 name: astrbot_plugin_self
 display_name: 自我
 desc: 把人格演化、隐私记忆与外部顾问合并成一个连续自我：同一套状态，分层决策
-version: 1.1.4
+version: 1.1.5
 author: 二元虹光
 repo: https://github.com/Wulizi01/astrbot_plugin_self
 astrbot_version: ">=4.29.0"

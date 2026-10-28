@@ -18,7 +18,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from core.store import SelfStore  # noqa: E402
-from page_api import SelfPageApi  # noqa: E402
+from page_api import PAGE_API_PREFIX, SelfPageApi, drop_routes  # noqa: E402
 
 
 class StubConfig:
@@ -500,6 +500,50 @@ class AdvisorTestEndpointTests(unittest.TestCase):
         payload = self.run_async(api.advisor_test())
         self.assertFalse(payload["success"])
         self.assertIn("20 次", payload["error"])
+
+
+class RouteTeardownTests(unittest.TestCase):
+    """禁用/重载后，面板路由必须从 context 里消失。"""
+
+    def make_context(self, entries):
+        return SimpleNamespace(registered_web_apis=list(entries))
+
+    def test_drops_only_our_prefix(self):
+        ctx = self.make_context(
+            [
+                (f"{PAGE_API_PREFIX}/overview", object(), ["GET"], "自我概览"),
+                ("/other_plugin/page/x", object(), ["GET"], "别人的"),
+                (f"{PAGE_API_PREFIX}/people", object(), ["GET"], "认识的人"),
+            ]
+        )
+        self.assertEqual(drop_routes(ctx), 2)
+        self.assertEqual(
+            [entry[0] for entry in ctx.registered_web_apis],
+            ["/other_plugin/page/x"],
+        )
+
+    def test_accepts_object_entries(self):
+        class Api:
+            def __init__(self, route):
+                self.route = route
+
+        ctx = self.make_context([Api(f"{PAGE_API_PREFIX}/reset"), Api("/other/page/y")])
+        self.assertEqual(drop_routes(ctx), 1)
+        self.assertEqual([a.route for a in ctx.registered_web_apis], ["/other/page/y"])
+
+    def test_mutates_in_place(self):
+        """dashboard 持有的是同一个 list 引用，重建一个新 list 等于没删。"""
+        apis = [(f"{PAGE_API_PREFIX}/overview", object(), ["GET"], "x")]
+        ctx = SimpleNamespace(registered_web_apis=apis)
+        drop_routes(ctx)
+        self.assertIs(ctx.registered_web_apis, apis)
+        self.assertEqual(apis, [])
+
+    def test_idempotent_and_safe_without_context(self):
+        ctx = self.make_context([(f"{PAGE_API_PREFIX}/overview", object(), ["GET"], "x")])
+        self.assertEqual(drop_routes(ctx), 1)
+        self.assertEqual(drop_routes(ctx), 0)
+        self.assertEqual(drop_routes(SimpleNamespace()), 0)
 
 
 if __name__ == "__main__":

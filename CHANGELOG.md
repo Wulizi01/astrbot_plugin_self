@@ -1,5 +1,11 @@
 # 修复记录
 
+## v1.1.5 — 卸载时摘掉面板路由
+
+| 问题 | 修法 | 用例 |
+|---|---|---|
+| 插件被禁用/重载后，`register_web_api` 注册的 9 条路由还留在 `context.registered_web_apis` 里，接口在重启前一直可访问 | `Star.terminate()` 里调用 `page_api.drop_routes()`：按 `/astrbot_plugin_self/page` 前缀原地剔除（dashboard 持有同一个 list 引用）；AstrBot 没有 `unregister_web_api`，这是官方生命周期里唯一稳定的入口 | `RouteTeardownTests`（4 项：只删自己的、兼容对象形态、原地改、幂等与缺属性） |
+
 ## v1.1.4 — 面板测试也计数
 
 | 问题 | 修法 | 用例 |

@@ -21,6 +21,33 @@ except Exception:  # running the tests outside AstrBot (CI)
 PLUGIN_NAME = "astrbot_plugin_self"
 PAGE_API_PREFIX = f"/{PLUGIN_NAME}/page"
 
+
+def _route_of(api: Any) -> str:
+    """Route string of one entry in ``context.registered_web_apis``.
+
+    AstrBot appends tuples today, but ``registered_web_apis`` is annotated with
+    a dataclass, so accept either shape instead of betting on one.
+    """
+    if isinstance(api, (tuple, list)):
+        return str(api[0] or "") if api else ""
+    return str(getattr(api, "route", "") or "")
+
+
+def drop_routes(context: Any, prefix: str = PAGE_API_PREFIX) -> int:
+    """Remove our page routes from the context; returns how many were dropped.
+
+    AstrBot has no ``unregister_web_api``. On disable/reload it calls
+    ``Star.terminate()`` but leaves ``registered_web_apis`` alone, so a disabled
+    plugin keeps answering its panel endpoints until the whole bot restarts.
+    The list is mutated in place because the dashboard holds a reference to it.
+    """
+    apis = getattr(context, "registered_web_apis", None)
+    if apis is None:
+        return 0
+    before = len(apis)
+    apis[:] = [api for api in apis if not _route_of(api).startswith(prefix)]
+    return before - len(apis)
+
 SENSITIVE_KEYS = {"api_key"}
 EDITABLE_KEYS = [
     "advisor_enabled",

@@ -47,7 +47,7 @@ tools/migrate.py     从旧三件导入叙事/倾向/经历（默认 dry-run，-
 tools/verify_live.py 只读体检：10 项，不写库
 tools/preview.py     本地预览面板（假数据 + 无头浏览器渲染检查）
 tests/test_core.py   隐私矩阵 / 预算 / 人格 / 存储（81 项）
-tests/test_page_api.py 面板接口 / 设置保存 / 迁移（36 项）
+tests/test_page_api.py 面板接口 / 设置保存 / 迁移 / 路由注销（40 项）
 tests/test_tools.py  verify_live 的路径解析与 10 项体检（10 项）
 tests/test_form.js   面板取值与展示辅助函数（Node）
 ```
@@ -162,12 +162,12 @@ python tools\migrate.py --apply    # 写入 self.db
 
 ```text
 python tests\test_core.py        81 项   隐私 / 预算 / 人格 / 存储 / 跨群
-python tests\test_page_api.py    36 项   面板接口 / 设置保存 / 触发策略 / 迁移 / 私聊可见性
+python tests\test_page_api.py    40 项   面板接口 / 设置保存 / 触发策略 / 迁移 / 私聊可见性
 python tests\test_tools.py       10 项   verify_live 找库与体检项
 node tests\test_form.js           1 项   面板取值（空值不回填成 0）
 ```
 
-合计 128 项。改完代码先跑这几条，CI 也会跑同一组。
+合计 132 项。改完代码先跑这几条，CI 也会跑同一组。
 
 ## 已知限制
 
@@ -178,7 +178,6 @@ node tests\test_form.js           1 项   面板取值（空值不回填成 0）
 - 记忆按「被 @ 或被唤醒」写入（capture_mode=addressed 时更窄），群里纯闲聊不进库
 - 未实现向量检索，顾问只看当前问题与人格状态
 - privacy_words 只替换内置的 11 个 high 词；另有 9 个 mention 词不可配置
-- 卸载插件时不会注销 `register_web_api` 注册的路由；禁用后重启前接口仍可访问
 - 面板的「测试连接」单独计额度（每小时 20 次，不占聊天配额），失败会退还
 - 迁移默认不导入旧记忆：旧记忆没有群号，导入后既不能转述也查不到
 

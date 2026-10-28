@@ -28,7 +28,7 @@ from .core import advisor, persona, privacy
 from .core.store import SelfStore
 
 PLUGIN_ID = "astrbot_plugin_self"
-VERSION = "1.1.4"
+VERSION = "1.1.5"
 
 
 @register(PLUGIN_ID, "local", "自我", VERSION)
@@ -58,7 +58,12 @@ class SelfPlugin(Star):
             self.page_api = None
 
     async def terminate(self) -> None:
-        """Cancel background work so reloads do not leave orphan tasks."""
+        """Cancel background work and unregister the panel routes.
+
+        AstrBot calls this on disable/reload but never clears
+        ``registered_web_apis`` itself, so without the second half a "disabled"
+        plugin still answers its endpoints until the bot restarts.
+        """
         for task in list(self._tasks):
             task.cancel()
         for task in list(self._tasks):
@@ -67,6 +72,14 @@ class SelfPlugin(Star):
             except (asyncio.CancelledError, Exception):  # noqa: BLE001
                 pass
         self._tasks.clear()
+        try:
+            from .page_api import drop_routes
+
+            removed = drop_routes(self.context)
+            if removed:
+                logger.info("[self] unregistered %d panel routes", removed)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("[self] failed to unregister panel routes: %s", exc)
 
     # ------------------------------------------------------------------ config
 
