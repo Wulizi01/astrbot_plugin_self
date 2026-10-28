@@ -1,5 +1,14 @@
 # 修复记录
 
+## v1.1.1 — 重置的第二条入口
+
+| 问题 | 修法 | 用例 |
+|---|---|---|
+| `/人格重置` 直接写 profile，绕过 `narrative_version`，进行中的反思会把旧叙事写回 | 命令改为调用 `store.reset_narrative()`，与面板同一入口 | `test_command_goes_through_reset_narrative`（静态断言禁止 `set_profile(narrative=...)`） |
+| README 三处漂移 | 补 `self_narrative_append` 工具说明；删掉已移出仓库的检查单死链；更正记忆写入条件与敏感词数量 | — |
+
+新增 GitHub Actions：push / PR 自动跑 100 项测试与 `compileall`。
+
 ## v1.1.0 — 前端：少踩坑、少让人猜
 
 | 项 | 做法 |

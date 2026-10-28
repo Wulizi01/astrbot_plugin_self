@@ -15,7 +15,43 @@ import time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_DB = ROOT.parents[1] / "plugin_data" / "astrbot_plugin_self" / "self.db"
+NAME = "astrbot_plugin_self"
+REL = Path("plugin_data") / NAME / "self.db"
+
+
+def _candidates() -> list[Path]:
+    """库可能落在这几种位置，按发现顺序排。
+
+    ROOT 有两种身份，所以往上找而不是写死一层：
+      已安装    <AstrBot>\\data\\plugins\\astrbot_plugin_self  ->  <AstrBot>\\data\\plugin_data\\...
+      开发目录  <群bot>\\projects\\astrbot_plugin_self        ->  本机真实库在
+                                                                 <群bot>\\AstrBot\\data\\plugin_data\\...
+    末段那条 <*>/data/plugin_data/... 就是为开发目录准备的，AstrBot 目录叫什么都能找到。
+    """
+    exact: list[Path] = []
+    found: list[Path] = []
+    for parent in [ROOT, *ROOT.parents][:5]:
+        for cand in (parent / REL, parent / "data" / REL):
+            if cand not in exact:
+                exact.append(cand)
+        try:
+            hits = sorted(parent.glob(f"*/data/{REL}"))
+        except OSError:
+            hits = []
+        for hit in hits:
+            if hit not in found:
+                found.append(hit)
+    return exact + found
+
+
+def default_db() -> Path:
+    for cand in _candidates():
+        if cand.exists():
+            return cand
+    return _candidates()[0]
+
+
+DEFAULT_DB = default_db()
 
 
 def check(db: Path) -> tuple[list[tuple[str, bool, str]], int]:
@@ -94,7 +130,11 @@ def main() -> int:
     rows, code = check(db)
     if code == 2:
         print(f"找不到数据库：{db}")
-        print("先启动一次插件让库初始化。")
+        if args.db == str(DEFAULT_DB):
+            print("找过这些位置：")
+            for cand in _candidates():
+                print(f"  {'有' if cand.exists() else '无'}  {cand}")
+        print("先启动一次插件让库初始化，或用 --db 指定。")
         return 2
 
     width = max(len(name) for name, _, _ in rows)

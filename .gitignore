@@ -3,3 +3,6 @@ __pycache__/
 *.db
 .venv/
 *.log
+# 开发目录的 data\ 是本机 AstrBot 配置与模板副本，含 dashboard 凭据，绝不进仓库
+data/
+cmd_config.json
