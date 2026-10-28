@@ -8,7 +8,13 @@ on:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    # 开发与部署都在 Windows 上，所以两边都跑一遍：
+    # verify_live 的找库逻辑、临时目录、路径分隔符都值得在 windows 上被真跑一次。
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
