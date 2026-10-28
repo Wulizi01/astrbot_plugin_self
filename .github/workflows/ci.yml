@@ -1,0 +1,28 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: core tests
+        run: python tests/test_core.py
+      - name: panel api tests
+        run: python tests/test_page_api.py
+      - name: form tests
+        run: node tests/test_form.js
+      - name: compile check
+        run: python -m compileall -q main.py page_api.py core tools

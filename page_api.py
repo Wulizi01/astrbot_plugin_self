@@ -11,7 +11,12 @@ import time
 from pathlib import Path
 from typing import Any
 
-from astrbot.api import logger
+try:
+    from astrbot.api import logger
+except Exception:  # running the tests outside AstrBot (CI)
+    import logging
+
+    logger = logging.getLogger("astrbot_plugin_self")
 
 PLUGIN_NAME = "astrbot_plugin_self"
 PAGE_API_PREFIX = f"/{PLUGIN_NAME}/page"

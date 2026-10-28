@@ -28,7 +28,7 @@ from .core import advisor, persona, privacy
 from .core.store import SelfStore
 
 PLUGIN_ID = "astrbot_plugin_self"
-VERSION = "1.1.0"
+VERSION = "1.1.1"
 
 
 @register(PLUGIN_ID, "local", "自我", VERSION)
@@ -441,7 +441,7 @@ class SelfPlugin(Star):
     @filter.command("人格重置")
     @filter.permission_type(filter.PermissionType.ADMIN)
     async def reset_state(self, event: AstrMessageEvent):
-        self.store.set_profile(narrative="", samples=0, last_reflection=0)
+        self.store.reset_narrative()  # 版本号 +1，进行中的反思不会写回旧叙事
         yield event.plain_result("自我叙事和统计已重置；记忆与关系保留。")
 
     @filter.command("助手")
