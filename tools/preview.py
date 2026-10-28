@@ -21,16 +21,18 @@ import subprocess
 import sys
 import tempfile
 import threading
+import types
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from types import SimpleNamespace
+from urllib.parse import parse_qsl
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT.parents[1] / "AstrBot"))  # for `astrbot` imports
 sys.path.insert(0, str(ROOT))
 
 from core.store import SelfStore  # noqa: E402
-from page_api import SelfPageApi  # noqa: E402
+from page_api import PAGE_API_PREFIX, SelfPageApi  # noqa: E402
 
 PAGE_DIR = ROOT / "pages" / "自我"
 PORT = 8765
@@ -98,6 +100,10 @@ class StubPlugin:
         await asyncio.sleep(0.05)
         return f"（预览回答）{question}"
 
+    async def consult_panel(self, question: str) -> tuple[str, int]:
+        """预览也走「测试连接」的真实路径（page_api 优先调这个）。"""
+        return await self.consult(question), 0
+
     def _seed(self) -> None:
         self.store.set_profile(narrative="我在慢慢学会分辨谁是谁。", samples=42)
         self.store.touch_person("10001", "二元虹光")
@@ -118,6 +124,38 @@ class StubPlugin:
 
 PLUGIN = StubPlugin()
 API = SelfPageApi(PLUGIN)
+API.register_routes()  # fills PLUGIN.routes, which the preview server dispatches on
+
+
+class _FakeRequest:
+    """What handlers see as ``quart.request`` during a preview."""
+
+    def __init__(self, query: dict | None, body: dict | None) -> None:
+        self.args = query or {}
+        self._body = body or {}
+
+    async def get_json(self, silent: bool = False) -> dict:
+        return self._body
+
+
+def call_handler(handler, query: dict | None = None, body: dict | None = None):
+    """Run a page_api handler outside AstrBot, faking the bits of quart it uses."""
+    previous = sys.modules.get("quart")
+    module = types.ModuleType("quart")
+    module.request = _FakeRequest(query, body)
+    sys.modules["quart"] = module
+    try:
+        return asyncio.run(handler())
+    finally:
+        if previous is None:
+            sys.modules.pop("quart", None)
+        else:
+            sys.modules["quart"] = previous
+
+
+def registered(suffix: str):
+    """Handler for a page_api suffix ("/person"), or None."""
+    return PLUGIN.routes.get(f"{PAGE_API_PREFIX}{suffix}")
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -135,19 +173,14 @@ class Handler(BaseHTTPRequestHandler):
         self._send(200, json.dumps(payload, ensure_ascii=False).encode(), "application/json; charset=utf-8")
 
     def do_GET(self) -> None:  # noqa: N802
-        path = self.path.split("?")[0]
+        path, _, query = self.path.partition("?")
         if path.startswith("/api/"):
-            name = path[len("/api/"):]
-            handler = {
-                "overview": API.overview,
-                "people": API.people,
-                "advisor/log": API.advisor_log,
-                "advisor/settings": API.advisor_settings,
-            }.get(name)
+            # 按 page_api 注册的路由表分发，新接口不用再改这里。
+            handler = registered("/" + path[len("/api/"):])
             if not handler:
                 self._json({"success": False, "error": "not found"})
                 return
-            self._json(asyncio.run(handler()))
+            self._json(call_handler(handler, query=dict(parse_qsl(query))))
             return
         if path in ("/", "/index.html"):
             html = (PAGE_DIR / "index.html").read_text(encoding="utf-8")
@@ -167,16 +200,17 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self) -> None:  # noqa: N802
         path = self.path.split("?")[0]
-        if path == "/api/advisor/test":
+        if path.startswith("/api/"):
+            handler = registered("/" + path[len("/api/"):])
+            if not handler:
+                self._json({"success": False, "error": "not found"})
+                return
             length = int(self.headers.get("Content-Length") or 0)
-            payload = json.loads(self.rfile.read(length) or b"{}")
-            question = str(payload.get("question") or "用一个词回答：在线")
-            answer = asyncio.run(PLUGIN.consult(question))
-            self._json({"success": True, "data": {"answer": answer, "elapsed_ms": 50}})
-            return
-        if path == "/api/reset":
-            PLUGIN.store.reset_narrative()
-            self._json({"success": True, "data": {"ok": True}})
+            try:
+                body = json.loads(self.rfile.read(length) or b"{}")
+            except json.JSONDecodeError:
+                body = {}
+            self._json(call_handler(handler, body=body))
             return
         self._json({"success": False, "error": "not found"})
 
@@ -201,6 +235,29 @@ def contract_checks() -> list[str]:
     logs = asyncio.run(API.advisor_log()).get("data", {}).get("items", [])
     if len(logs) != 3:
         problems.append(f"advisor_log 期望 3 条，实际 {len(logs)}")
+
+    # 页面上的新交互也要在预览里可用，否则点成员会 404。
+    for suffix in ("/person", "/person/notes", "/advisor/test", "/reset"):
+        if not registered(suffix):
+            problems.append(f"没有注册 {suffix}")
+
+    detail = call_handler(registered("/person"), query={"user_id": "10001"})
+    if not detail.get("success"):
+        problems.append(f"person 返回失败：{detail.get('error')}")
+    else:
+        data = detail.get("data") or {}
+        if data.get("name") != "二元虹光":
+            problems.append(f"person.name 期望二元虹光，实际 {data.get('name')}")
+        if "stats" not in data or "memories" not in data:
+            problems.append("person 缺少 stats/memories")
+
+    saved = call_handler(
+        registered("/person/notes"), body={"user_id": "10001", "notes": "预览备注"}
+    )
+    if not saved.get("success"):
+        problems.append(f"person/notes 保存失败：{saved.get('error')}")
+    elif PLUGIN.store.person("10001")["notes"] != "预览备注":
+        problems.append("person/notes 没有写进 people.notes")
     return problems
 
 
@@ -224,7 +281,7 @@ def render_check() -> tuple[bool, str]:
         out.write_text(dom, encoding="utf-8")
     except Exception as exc:  # noqa: BLE001
         return False, f"渲染失败：{exc}"
-    expectations = ["一个连续存在的自己", "自我叙事", "二元虹光", "顾问", "42"]
+    expectations = ["一个连续存在的自己", "自我叙事", "二元虹光", "顾问", "42", "人物画像"]
     missing = [item for item in expectations if item not in dom]
     if missing:
         return False, f"DOM 里缺少：{missing}（已保存 {out}）"

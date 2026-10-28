@@ -5,6 +5,7 @@
 | 问题 | 修法 | 用例 |
 |---|---|---|
 | 打包一直是临时脚本在 `%TEMP%` 里现写现用：曾出现多一层目录、PowerShell 写出反斜杠条目、`data/cmd_config.json` 差点进包 | `tools/package.py`：白名单收集 → 单层 `astrbot_plugin_self/` + `as_posix()` 路径 → `verify()` 结构自检（单顶层、无反斜杠、无 pycache/db、非 ASCII 名带 UTF-8 标志）→ `--check` 解压后 `compileall` | `PackageTests`（5 项，含"凭据永不出现在包里"） |
+| `tools/preview.py` 的路由分发是写死的白名单，1.1.3 加了 `/person` 与 `/person/notes` 后，预览里点成员直接 404 | 改为按 `page_api` 注册表分发（新接口自动可用），并用假的 `quart.request` 调真实 handler；契约检查加上 person 详情、备注写入与「渲染出人物画像卡」 | 预览自检：`接口契约 通过`、DOM 含「人物画像」 |
 | 版本号靠手写在 metadata 与 main.py 两处 | 打包时从 `metadata.yaml` 读版本，文件名自带；`verify` 之外不碰源码 | `test_build_is_single_layer_with_posix_names` |
 
 ## v1.1.5 — 卸载时摘掉面板路由
