@@ -561,6 +561,47 @@ class StoreTests(unittest.TestCase):
         self.assertEqual(profile["narrative"], "")
         self.assertEqual(int(profile["narrative_version"]), 4)
 
+    def test_person_detail_bundles_memories_and_groups(self):
+        store = make_store()
+        store.touch_person("42", "小明")
+        store.add_memory("42", "小明", "group", "群里的公开话", "low", 1, "100")
+        store.add_memory("42", "小明", "private", "私聊的话", "low", 0)
+        store.touch_member("42", "100")
+        detail = store.person_detail("42")
+        self.assertIsNotNone(detail)
+        self.assertEqual(detail["stats"]["memories"], 2)
+        self.assertEqual(detail["stats"]["private"], 1)
+        self.assertEqual([g["group_id"] for g in detail["groups"]], ["100"])
+        self.assertEqual(detail["memories"][0]["text"], "私聊的话")
+
+    def test_person_detail_missing_returns_none(self):
+        self.assertIsNone(make_store().person_detail("nobody"))
+
+    def test_set_person_notes_roundtrip(self):
+        store = make_store()
+        store.touch_person("42", "小明")
+        ok, text = store.set_person_notes("42", "  别在群里开他玩笑  ")
+        self.assertTrue(ok)
+        self.assertEqual(text, "别在群里开他玩笑")
+        self.assertEqual(store.person("42")["notes"], "别在群里开他玩笑")
+
+    def test_set_person_notes_rejects_overflow(self):
+        store = make_store()
+        store.touch_person("42", "小明")
+        ok, message = store.set_person_notes("42", "字" * 501)
+        self.assertFalse(ok)
+        self.assertIn("500", message)
+
+    def test_self_block_includes_person_notes(self):
+        profile = {"narrative": "叙事", "verbosity": 0.5, "warmth": 0.5,
+                   "emoji": 0.2, "initiative": 0.3}
+        person = {"user_id": "42", "name": "小明", "msg_count": 9,
+                  "affinity": 0.4, "notes": "别在群里开他玩笑"}
+        block = persona.render_self_block(
+            profile, person=person, episodes=[], catchphrases=[], days=3
+        )
+        self.assertIn("别在群里开他玩笑", block)
+
     def test_concurrent_writes_do_not_lock(self):
         store = make_store()
         errors: list[Exception] = []

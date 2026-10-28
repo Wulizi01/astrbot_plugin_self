@@ -56,8 +56,16 @@ document.addEventListener("DOMContentLoaded", () => {
     renderLog(state.log);
   });
   document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape") cancelReset();
+    if (event.key === "Escape") {
+      cancelReset();
+      el("personCard")?.setAttribute("hidden", "");
+    }
   });
+  el("personClose")?.addEventListener("click", () => {
+    el("personCard")?.setAttribute("hidden", "");
+    document.querySelectorAll(".row-item.selected").forEach((n) => n.classList.remove("selected"));
+  });
+  el("saveNotesBtn")?.addEventListener("click", saveNotes);
   loadAll();
 });
 
@@ -317,7 +325,7 @@ function renderPeople(items) {
       const affinity = Math.round(
         Math.max(0, Math.min(1, Number(item.affinity) || 0)) * 100
       );
-      return `<div class="row-item">
+      return `<div class="row-item" data-user-id="${SelfForm.escapeHtml(item.user_id)}" role="button" tabindex="0">
         <span class="name">${SelfForm.escapeHtml(item.name || item.user_id)}</span>
         <span class="muted">${item.msg_count ?? 0} 句</span>
         <span class="affinity"><span class="bar"><i style="width:${affinity}%"></i></span>
@@ -326,7 +334,89 @@ function renderPeople(items) {
       </div>`;
     })
     .join("");
-  el("peopleHint").textContent = `共 ${sorted.length} 人`;
+  el("peopleHint").textContent = `共 ${sorted.length} 人 · 点一行看画像`;
+  if (!host.dataset.bound) {
+    host.addEventListener("click", (event) => {
+      const row = event.target.closest(".row-item[data-user-id]");
+      if (row) openPerson(row.dataset.userId, row);
+    });
+    host.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter" && event.key !== " ") return;
+      const row = event.target.closest(".row-item[data-user-id]");
+      if (row) {
+        event.preventDefault();
+        openPerson(row.dataset.userId, row);
+      }
+    });
+    host.dataset.bound = "1";
+  }
+}
+
+async function openPerson(userId, row) {
+  document.querySelectorAll(".row-item.selected").forEach((n) => n.classList.remove("selected"));
+  row?.classList.add("selected");
+  try {
+    const detail = await SelfPageApi.get(`/person?user_id=${encodeURIComponent(userId)}`);
+    renderPerson(detail);
+    el("personCard").hidden = false;
+  } catch (error) {
+    toast(error.message || String(error), true);
+  }
+}
+
+function renderPerson(detail) {
+  state.currentPerson = detail.user_id;
+  el("personName").textContent = detail.name || detail.user_id;
+  const stats = detail.stats || {};
+  const affinity = Math.round(
+    Math.max(0, Math.min(1, Number(detail.affinity) || 0)) * 100
+  );
+  const groups = (detail.groups || [])
+    .map((g) => `<span class="tag">群 ${SelfForm.escapeHtml(g.group_id)}</span>`)
+    .join(" ");
+  el("personMeta").innerHTML = `
+    <div><span>QQ</span><b>${SelfForm.escapeHtml(detail.user_id)}</b></div>
+    <div><span>发言</span><b>${detail.msg_count ?? 0} 句</b></div>
+    <div><span>亲近</span><b>${affinity}%</b></div>
+    <div><span>记忆</span><b>${stats.memories ?? 0} 条（私聊 ${stats.private ?? 0} / 群 ${stats.group ?? 0}）</b></div>
+    <div><span>首次</span><b>${SelfForm.relTime(detail.first_seen)}</b></div>
+    <div><span>最近</span><b>${SelfForm.relTime(detail.last_seen)}</b></div>
+    <div class="wide"><span>群</span><b>${groups || "—"}</b></div>`;
+  el("personNotes").value = detail.notes || "";
+  el("notesResult").textContent = "";
+  const memories = detail.memories || [];
+  el("personMemories").innerHTML = memories.length
+    ? memories
+        .map((m) => {
+          const scope = m.scope === "private" ? "私聊" : m.scope === "legacy" ? "旧 import" : "群";
+          const flag = m.sensitivity === "high" ? '<b class="tag bad">高敏</b>' : "";
+          return `<div class="log-item">
+            <div class="log-head"><span>${scope}</span><span>${SelfForm.relTime(m.created_at)}</span>${flag}</div>
+            <p class="q">${SelfForm.escapeHtml(m.text)}</p>
+          </div>`;
+        })
+        .join("")
+    : '<p class="empty">还没有关于这个人的记忆。</p>';
+}
+
+async function saveNotes() {
+  const button = el("saveNotesBtn");
+  if (!state.currentPerson) return;
+  button.disabled = true;
+  el("notesResult").textContent = "保存中…";
+  try {
+    const result = await SelfPageApi.post("/person/notes", {
+      user_id: state.currentPerson,
+      notes: el("personNotes").value,
+    });
+    el("notesResult").textContent = "已保存，下一轮就会生效。";
+    const cached = state.people.find((p) => p.user_id === state.currentPerson);
+    if (cached) cached.notes = result.notes;
+  } catch (error) {
+    el("notesResult").textContent = `保存失败：${error.message || error}`;
+  } finally {
+    button.disabled = false;
+  }
 }
 
 function renderLog(items) {

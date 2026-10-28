@@ -86,6 +86,8 @@ class SelfPageApi:
         routes = [
             ("/overview", self.overview, ["GET"], "自我概览"),
             ("/people", self.people, ["GET"], "认识的人"),
+            ("/person", self.person_detail, ["GET"], "某个人的画像"),
+            ("/person/notes", self.save_person_notes, ["POST"], "保存备注"),
             ("/advisor/log", self.advisor_log, ["GET"], "顾问调用记录"),
             ("/advisor/test", self.advisor_test, ["POST"], "测试顾问连接"),
             ("/advisor/settings", self.advisor_settings, ["GET"], "顾问设置"),
@@ -150,6 +152,37 @@ class SelfPageApi:
         try:
             rows = self.plugin.store.list_people(50)
             return self._ok({"items": rows})
+        except Exception as exc:  # noqa: BLE001
+            return self._error(exc)
+
+    async def person_detail(self):
+        try:
+            from quart import request
+
+            user_id = str(request.args.get("user_id") or "").strip()
+            if not user_id:
+                return self._error("缺少 user_id")
+            detail = self.plugin.store.person_detail(user_id)
+            if not detail:
+                return self._error("没有这个人")
+            return self._ok(detail)
+        except Exception as exc:  # noqa: BLE001
+            return self._error(exc)
+
+    async def save_person_notes(self):
+        try:
+            from quart import request
+
+            body = await request.get_json(silent=True) or {}
+            user_id = str(body.get("user_id") or "").strip()
+            if not user_id:
+                return self._error("缺少 user_id")
+            ok, payload = self.plugin.store.set_person_notes(
+                user_id, str(body.get("notes") or "")
+            )
+            if not ok:
+                return self._error(payload)
+            return self._ok({"user_id": user_id, "notes": payload})
         except Exception as exc:  # noqa: BLE001
             return self._error(exc)
 

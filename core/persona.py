@@ -85,6 +85,8 @@ def render_self_block(
     ) or "- 暂无特别重要的经历"
     phrase_hint = "、".join(catchphrases) if catchphrases else "还没有固定口癖"
     narrative = str(profile.get("narrative") or "").strip() or "我还在形成自己。"
+    notes = str((person or {}).get("notes") or "").strip()
+    notes_line = f"你对这个人的备注：{notes[:120]}\n" if notes else ""
     return (
         "<internal_self_model>\n"
         "你是一个连续存在的个体，不是固定角色卡。\n"
@@ -95,6 +97,7 @@ def render_self_block(
         f"{describe_warmth(values['warmth'])}；"
         f"{'偶尔用表情' if values['emoji'] > 0.3 else '少用表情'}；口癖：{phrase_hint}\n"
         f"眼前这个人：{relationship_hint(person)}\n"
+        f"{notes_line}"
         "最近的重要经历：\n"
         f"{episode_lines}\n"
         "这些是逐渐变化的倾向，不是硬设定；不要为了表演而变化。\n"

@@ -56,6 +56,24 @@
       <p class="hint" id="peopleHint"></p>
     </section>
 
+    <section class="card" id="personCard" hidden>
+      <div class="card-head">
+        <h2 id="personName">人物画像</h2>
+        <button id="personClose" class="btn ghost">关闭</button>
+      </div>
+      <div class="person-meta" id="personMeta"></div>
+      <label class="field wide">
+        <span>备注（只有你看得到，会写进它的提示词）</span>
+        <textarea id="personNotes" maxlength="500"></textarea>
+        <small>最多 500 字；写“别在群里开他玩笑”这类分寸，比写评价有用。</small>
+      </label>
+      <div class="row">
+        <button id="saveNotesBtn" class="btn">保存备注</button>
+        <span class="hint" id="notesResult"></span>
+      </div>
+      <div class="log" id="personMemories"></div>
+    </section>
+
     <section class="card">
       <div class="card-head">
         <h2>顾问设置</h2>

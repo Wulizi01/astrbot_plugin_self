@@ -250,6 +250,50 @@ class SelfStore:
                 (delta, user_id),
             )
 
+    def person_detail(self, user_id: str, limit: int = 12) -> dict[str, Any] | None:
+        """One person plus what the panel needs to show a profile card."""
+        person = self.person(user_id)
+        if not person:
+            return None
+        with self._conn() as conn:
+            rows = conn.execute(
+                "SELECT scope, group_id, text, sensitivity, shareable, created_at "
+                "FROM memories WHERE speaker_id=? ORDER BY created_at DESC LIMIT ?",
+                (user_id, limit),
+            ).fetchall()
+            counts = conn.execute(
+                "SELECT COUNT(*) AS total, "
+                "SUM(scope='private') AS private_count, "
+                "SUM(scope='group') AS group_count "
+                "FROM memories WHERE speaker_id=?",
+                (user_id,),
+            ).fetchone()
+            groups = conn.execute(
+                "SELECT group_id, last_seen FROM members WHERE user_id=? "
+                "ORDER BY last_seen DESC",
+                (user_id,),
+            ).fetchall()
+        person["memories"] = [dict(row) for row in rows]
+        person["stats"] = {
+            "memories": int(counts["total"] or 0),
+            "private": int(counts["private_count"] or 0),
+            "group": int(counts["group_count"] or 0),
+        }
+        person["groups"] = [dict(row) for row in groups]
+        return person
+
+    def set_person_notes(self, user_id: str, notes: str, max_chars: int = 500) -> tuple[bool, str]:
+        text = str(notes or "").strip()
+        if len(text) > max_chars:
+            return False, f"备注最多 {max_chars} 字。"
+        with self._conn() as conn:
+            cursor = conn.execute(
+                "UPDATE people SET notes=? WHERE user_id=?", (text, user_id)
+            )
+        if cursor.rowcount == 0:
+            return False, "没有这个人。"
+        return True, text
+
     # ---------------- memories ----------------
 
     def add_memory(
