@@ -28,7 +28,7 @@ from .core import advisor, persona, privacy
 from .core.store import SelfStore
 
 PLUGIN_ID = "astrbot_plugin_self"
-VERSION = "1.1.5"
+VERSION = "1.1.6"
 
 
 @register(PLUGIN_ID, "local", "自我", VERSION)

@@ -10,6 +10,7 @@ from __future__ import annotations
 import sqlite3
 import sys
 import tempfile
+import zipfile
 import unittest
 from pathlib import Path
 
@@ -17,6 +18,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "tools"))
 
+import package  # noqa: E402
 import verify_live  # noqa: E402
 from core.store import SelfStore  # noqa: E402
 
@@ -122,6 +124,72 @@ class CheckTests(unittest.TestCase):
         before = path.read_bytes()
         verify_live.check(path)
         self.assertEqual(before, path.read_bytes(), "体检不能写库")
+
+
+class PackageTests(unittest.TestCase):
+    """打包规则：单层、正斜杠、只收该收的。"""
+
+    def make_tree(self) -> Path:
+        base = Path(tempfile.mkdtemp())
+        (base / "main.py").write_text("VERSION = '9.9.9'\n", encoding="utf-8")
+        (base / "metadata.yaml").write_text("name: x\nversion: 9.9.9\n", encoding="utf-8")
+        (base / "README.md").write_text("# x\n", encoding="utf-8")
+        (base / "panel_light.png").write_bytes(b"\x89PNG\r\n\x1a\n")
+        (base / "data").mkdir()
+        (base / "data" / "cmd_config.json").write_text('{"password": "leak"}', encoding="utf-8")
+        (base / ".github").mkdir()
+        (base / ".github" / "ci.yml").write_text("name: ci\n", encoding="utf-8")
+        pages = base / "pages" / "自我"
+        pages.mkdir(parents=True)
+        (pages / "app.js").write_text("// hi\n", encoding="utf-8")
+        cache = base / "core" / "__pycache__"
+        cache.mkdir(parents=True)
+        (cache / "store.cpython-312.pyc").write_bytes(b"\x00")
+        (base / "core" / "store.py").write_text("x = 1\n", encoding="utf-8")
+        return base
+
+    def test_collect_takes_only_shippable_files(self):
+        root = self.make_tree()
+        rels = [p.as_posix() for p in package.collect(root)]
+        self.assertIn("main.py", rels)
+        self.assertIn("pages/自我/app.js", rels)
+        self.assertIn("core/store.py", rels)
+        self.assertIn("panel_light.png", rels)
+        self.assertNotIn("data/cmd_config.json", rels)
+        self.assertFalse(any(".github" in r for r in rels))
+        self.assertFalse(any("__pycache__" in r or r.endswith(".pyc") for r in rels))
+
+    def test_build_is_single_layer_with_posix_names(self):
+        root = self.make_tree()
+        out = Path(tempfile.mkdtemp())
+        target = package.build(root, out)
+        self.assertTrue(target.name.startswith("astrbot_plugin_self_v9.9.9_"))
+        with zipfile.ZipFile(target) as archive:
+            names = archive.namelist()
+        self.assertTrue(all(n.startswith("astrbot_plugin_self/") for n in names))
+        self.assertFalse(any("\\" in n for n in names))
+        self.assertIn("astrbot_plugin_self/pages/自我/app.js", names)
+        self.assertEqual(package.verify(target), [])
+
+    def test_no_credentials_ever_ship(self):
+        root = self.make_tree()
+        target = package.build(root, Path(tempfile.mkdtemp()))
+        with zipfile.ZipFile(target) as archive:
+            payload = b"".join(archive.read(n) for n in archive.namelist())
+        self.assertNotIn(b"leak", payload)
+
+    def test_verify_catches_a_flat_archive(self):
+        bad = Path(tempfile.mkdtemp()) / "bad.zip"
+        with zipfile.ZipFile(bad, "w") as archive:
+            archive.writestr("main.py", "x = 1\n")
+        problems = package.verify(bad)
+        self.assertTrue(problems)
+        self.assertTrue(any("顶层目录" in p or "不在" in p for p in problems))
+
+    def test_check_importable_on_a_real_build(self):
+        root = self.make_tree()
+        target = package.build(root, Path(tempfile.mkdtemp()))
+        self.assertTrue(package.check_importable(target))
 
 
 if __name__ == "__main__":

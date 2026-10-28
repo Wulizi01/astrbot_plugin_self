@@ -46,9 +46,10 @@ diary.md        明文，仅私聊可读写
 tools/migrate.py     从旧三件导入叙事/倾向/经历（默认 dry-run，--apply 才写）
 tools/verify_live.py 只读体检：10 项，不写库
 tools/preview.py     本地预览面板（假数据 + 无头浏览器渲染检查）
+tools/package.py     打发布包（在发布仓库里跑；单层目录 + 结构自检，--check 顺带编译）
 tests/test_core.py   隐私矩阵 / 预算 / 人格 / 存储（81 项）
 tests/test_page_api.py 面板接口 / 设置保存 / 迁移 / 路由注销（40 项）
-tests/test_tools.py  verify_live 的路径解析与 10 项体检（10 项）
+tests/test_tools.py  verify_live 与打包规则（15 项）
 tests/test_form.js   面板取值与展示辅助函数（Node）
 ```
 
@@ -163,11 +164,11 @@ python tools\migrate.py --apply    # 写入 self.db
 ```text
 python tests\test_core.py        81 项   隐私 / 预算 / 人格 / 存储 / 跨群
 python tests\test_page_api.py    40 项   面板接口 / 设置保存 / 触发策略 / 迁移 / 私聊可见性
-python tests\test_tools.py       10 项   verify_live 找库与体检项
+python tests\test_tools.py       15 项   verify_live 找库 / 打包规则
 node tests\test_form.js           1 项   面板取值（空值不回填成 0）
 ```
 
-合计 132 项。改完代码先跑这几条，CI 也会跑同一组。
+合计 137 项。改完代码先跑这几条，CI 也会跑同一组。
 
 ## 已知限制
 
