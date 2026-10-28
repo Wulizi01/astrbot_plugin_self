@@ -6,6 +6,7 @@
 |---|---|---|
 | 口癖把 `jpg`、`2333`、`awsl`、`@某人`、纯符号都当成短语收进去，每轮提示词里挂着噪音 | 抽取时只收纯汉字 2–4 字（`_shape_ok`），原有虚词表与停用词不变 | `test_extract_catchphrases_drops_shape_noise`、`test_extract_catchphrases_keeps_short_chinese` |
 | 只说过一次的句子碎片也会进提示词 | 提示词侧要求 `min_count=2`（说两遍才算习惯）；面板仍显示全部，方便排查 | `test_top_catchphrases_min_count_keeps_habits_only` |
+| `verify_live` 碰到空库、半截库直接抛 traceback | 捕获 `sqlite3.Error`，输出一行「库结构」失败项；顺手把找库逻辑和 10 项体检写进用例 | `tests/test_tools.py`（10 项） |
 
 ## v1.1.1 — 重置的第二条入口
 

@@ -48,6 +48,7 @@ tools/verify_live.py 只读体检：10 项，不写库
 tools/preview.py     本地预览面板（假数据 + 无头浏览器渲染检查）
 tests/test_core.py   隐私矩阵 / 预算 / 人格 / 存储（72 项）
 tests/test_page_api.py 面板接口 / 设置保存 / 迁移（33 项）
+tests/test_tools.py  verify_live 的路径解析与 10 项体检（10 项）
 tests/test_form.js   面板取值与展示辅助函数（Node）
 ```
 
@@ -158,10 +159,11 @@ python tools\migrate.py --apply    # 写入 self.db
 ```text
 python tests\test_core.py        72 项   隐私 / 预算 / 人格 / 存储 / 跨群
 python tests\test_page_api.py    33 项   面板接口 / 设置保存 / 触发策略 / 迁移 / 私聊可见性
+python tests\test_tools.py       10 项   verify_live 找库与体检项
 node tests\test_form.js           1 项   面板取值（空值不回填成 0）
 ```
 
-合计 106 项。改完代码先跑这三条，CI 也会跑同一组。
+合计 116 项。改完代码先跑这几条，CI 也会跑同一组。
 
 ## 已知限制
 

@@ -22,6 +22,8 @@ jobs:
         run: python tests/test_core.py
       - name: panel api tests
         run: python tests/test_page_api.py
+      - name: tools tests
+        run: python tests/test_tools.py
       - name: form tests
         run: node tests/test_form.js
       - name: compile check

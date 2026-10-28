@@ -116,6 +116,9 @@ def check(db: Path) -> tuple[list[tuple[str, bool, str]], int]:
 
         advisor = conn.execute("SELECT COUNT(*) FROM advisor_log").fetchone()[0]
         add("顾问日志", True, f"{advisor} 条")
+    except sqlite3.Error as exc:
+        # 空文件、半截库、别的插件的库：给一句能看懂的结论，不要甩 traceback。
+        add("库结构", False, f"{type(exc).__name__}: {exc}")
     finally:
         conn.close()
     return rows, 0
