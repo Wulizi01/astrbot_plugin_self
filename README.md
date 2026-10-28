@@ -20,6 +20,37 @@
 
 旧插件的数据不会自动迁移；本插件从空库开始，先跑一段时间再决定是否导入。
 
+> **不要和旧的三件同时启用。** 三者都开着时，人格块会被注入两次、日记工具重名、
+> 顾问会被调用两次，还会出现两套互不相认的记忆。启用本插件前，先在面板里把
+> `astrbot_plugin_plastic_persona`、`astrbot_plugin_private_memory`、
+> `astrbot_plugin_assistant_bridge` 停用。
+
+## 存储与隐私
+
+```text
+self.db         SQLite，明文。profile / episodes / memories / people / advisor_log
+diary.md        明文，仅私聊可读写
+配置            plugin 配置 JSON，明文；api_key 也是明文
+```
+
+这些都是明文存在你自己的机器上，没有加密。同一台机器上的其它程序能直接读到。
+如果你会共享这台机器，把 `data/plugin_data/astrbot_plugin_self/` 和
+`data/private_self/` 的权限收一下。
+
+发出去的只有两类：顾问调用时的提问（已做手机号/身份证/卡号/密钥替换），
+以及你自己的消息（和平时聊天一样）。记忆与日记不会离开本机。
+
+## 工具
+
+```text
+tools/migrate.py     从旧三件导入叙事/倾向/经历（默认 dry-run，--apply 才写）
+tools/verify_live.py 只读体检：10 项，不写库
+tools/preview.py     本地预览面板（假数据 + 无头浏览器渲染检查）
+tests/test_core.py   隐私矩阵 / 预算 / 人格 / 存储（66 项）
+tests/test_page_api.py 面板接口 / 设置保存 / 迁移（31 项）
+tests/test_form.js   面板取值与展示辅助函数（Node）
+```
+
 ## 决策顺序
 
 ```text
